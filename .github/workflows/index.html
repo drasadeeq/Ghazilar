@@ -325,6 +325,8 @@ h1,h2,h3,.brand,.tabbar-label{font-family:var(--font-head,'Noto Kufi Arabic'),'N
 .ui-card.danger .ui-ok{background:var(--danger,#D64B3F);}
 @keyframes dlgPop{from{opacity:0;transform:scale(.88) translateY(10px)}to{opacity:1;transform:none}}
 .sup-actions{display:flex;gap:6px;margin-inline-start:auto;}
+
+.tabbar button.active{background:var(--primary);color:#fff;border-radius:14px;transform:translateY(-3px);box-shadow:0 4px 12px rgba(0,115,128,.28)}.tabbar button.active .tabbar-icon{transform:scale(1.1)}
 </style>
 </head>
 <body>
@@ -622,6 +624,9 @@ h1,h2,h3,.brand,.tabbar-label{font-family:var(--font-head,'Noto Kufi Arabic'),'N
     <div class="drawer-link" onclick="switchTab('rep');toggleDrawer(false)"><span class="di">📊</span>دوكلاتلار</div>
     <div class="drawer-link" onclick="switchTab('expenses');toggleDrawer(false)"><span class="di">💰</span>چىقىملار</div>
     <div class="drawer-group">تەڭشەك</div>
+    <div class="drawer-link" onclick="openMyAccount();toggleDrawer(false)"><span class="di">👤</span>ھېسابىم</div>
+    <div class="drawer-link" onclick="openOwnerLogin();toggleDrawer(false)"><span class="di">👑 باش دوختۇر كىرىشى</span></div>
+    <div class="drawer-link" onclick="openMyPassword();toggleDrawer(false)"><span class="di">🔐</span>ھېسابات پارولىم</div>
     <div class="drawer-link" onclick="switchTab('staff');toggleDrawer(false)"><span class="di">👥</span>خىزمەتچىلەر</div>
     <div class="drawer-link" onclick="openModal('modalSettings');toggleDrawer(false)"><span class="di">⚙️</span>تەڭشەكلەر</div>
     <div class="drawer-link exit" onclick="openModal('modalExit');toggleDrawer(false)"><span class="di">🚪</span>چېكىنىش</div>
@@ -790,6 +795,9 @@ h1,h2,h3,.brand,.tabbar-label{font-family:var(--font-head,'Noto Kufi Arabic'),'N
     </div>
   </div>
 
+  <div class="modal-overlay" id="modalMyAccount" onclick="if(event.target===this) closeModal('modalMyAccount')"><div class="modal-sheet"><button class="close-modal" onclick="closeModal('modalMyAccount')">✕</button><div class="modal-handle"></div><div class="modal-title">👤 ھېسابىم</div><div id="accountIdentity" class="row-sub" style="margin-bottom:12px;"></div><div class="field-label">ئادرېس</div><input class="field-input" id="accAddress"><div class="field-label">WhatsApp نومۇرى</div><input class="field-input" id="accWhatsApp" style="direction:ltr;text-align:left;"><div class="field-label">Telegram ئالاقىسى</div><input class="field-input" id="accTelegram" style="direction:ltr;text-align:left;"><div class="field-label">ئېلخەت ئادرېسى</div><input class="field-input" id="accEmail" type="email" style="direction:ltr;text-align:left;"><div class="field-label">ئىشلەيدىغان كۈنلەر</div><div class="chip-row" id="accDays"></div><div class="field-label">خىزمەت ۋاقتى</div><div class="field-row" style="direction:ltr;"><input class="field-input" id="accStart" type="time" inputmode="none" step="300" onfocus="this.showPicker&&this.showPicker()"><input class="field-input" id="accEnd" type="time" inputmode="none" step="300" onfocus="this.showPicker&&this.showPicker()"></div><button class="btn btn-primary" onclick="saveMyAccount()">💾 ساقلاش</button><div id="allAccounts" style="display:none;margin-top:16px;"></div></div></div>
+  <div class="modal-overlay" id="modalMyPassword" onclick="if(event.target===this) closeModal('modalMyPassword')"><div class="modal-sheet"><button class="close-modal" onclick="closeModal('modalMyPassword')">✕</button><div class="modal-title" id="passTitle">ھېسابات پارولىم</div><div class="field-label">كونا پارول</div><input class="field-input" id="passOld" type="password"><div class="field-label">يېڭى پارول (كەم دېگەندە 4 خانە)</div><input class="field-input" id="passNew" type="password"><div class="field-label">يېڭى پارولنى قايتا يېزىڭ</div><input class="field-input" id="passNew2" type="password"><button class="btn btn-primary" onclick="saveMyPassword()">💾 پارولنى ساقلاش</button></div></div>
+  <div class="modal-overlay" id="modalTestCatalog" onclick="if(event.target===this) closeModal('modalTestCatalog')"><div class="modal-sheet"><button class="close-modal" onclick="closeModal('modalTestCatalog')">✕</button><div class="modal-title">🧪 تەكشۈرۈش تۈرلىرى</div><div id="catalogRows"></div><button class="btn btn-outline" onclick="catalogAdd()">＋ يېڭى تۈر</button><button class="btn btn-primary" onclick="catalogSave()">💾 ساقلاش</button></div></div>
   <div class="modal-overlay" id="modalSettings" onclick="if(event.target===this) closeModal('modalSettings')">
     <div class="modal-sheet">
       <button class="close-modal" onclick="closeModal('modalSettings')">✕</button>
@@ -811,9 +819,9 @@ h1,h2,h3,.brand,.tabbar-label{font-family:var(--font-head,'Noto Kufi Arabic'),'N
       <div style="font-size:11px;color:var(--text-soft);margin-top:4px;">بۇ نىسبەتلەر ۋاقتى-ۋاقتىدا ئۆزگىرىپ تۇرىدۇ (بولۇپمۇ سۇرىيە لىراسى) — ھەقىقىي بازار باھاسىغا ئاساسەن ئۆزىڭىز يېڭىلاڭ.</div>
       <div class="field-label">كۆرۈنمە يۈز رەڭگى</div>
       <div class="theme-grid" id="themeGrid"></div>
-      <div class="field-label">شام كاش پاركودى (تۆلەم QR كودى)</div>
+      <div id="paymentQRSection"><div class="field-label">شام كاش پاركودى (تۆلەم QR كودى)</div>
       <img class="qr-preview" id="qrPreview" style="display:none;">
-      <input class="field-input" id="setQrFile" type="file" accept="image/*" onchange="uploadQr(event)">
+      <input class="field-input" id="setQrFile" type="file" accept="image/*" onchange="uploadQr(event)"></div>
       <div class="field-label">PIN قۇلۇپىنى ئۆزگەرتىش (4 خانە)</div>
       <div class="field-row">
         <div><input class="field-input" id="setPinOld" placeholder="ھازىرقى PIN" maxlength="4"></div>
@@ -831,10 +839,16 @@ h1,h2,h3,.brand,.tabbar-label{font-family:var(--font-head,'Noto Kufi Arabic'),'N
         <label class="switch"><input type="checkbox" id="autoDarkSwitch" onchange="setAutoDark(this.checked)"><span class="slider"></span></label>
       </div>
 
+      <div class="field-label" style="margin-top:20px;border-top:1px solid var(--border);padding-top:14px;">سىيرىش تەڭشىكى</div>
+      <div class="setting-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><span class="field-label" style="margin:0;">ئوڭ قىرغاقتىن سىيرىپ يان تىزىملىكنى ئېچىش</span><label class="switch"><input id="gestureDrawer" type="checkbox" onchange="setGesturePref('drawer',this.checked)"><span class="slider"></span></label></div>
+      <div class="setting-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><span class="field-label" style="margin:0;">سول/ئوڭغا سىيرىپ بەتلەر ئارىسىدا ئۆتۈش</span><label class="switch"><input id="gestureTabs" type="checkbox" onchange="setGesturePref('tabs',this.checked)"><span class="slider"></span></label></div>
+
       <div class="owner-panel" id="ownerPanel" style="display:none;">
         <div class="modal-title" style="font-size:16px;">👑 باش دوختۇر تەڭشىكى (باشقىلارغا كۆرۈنمەيدۇ)</div>
         <div class="field-label">ئەزالار ۋە سالاھىيەتلىرى</div>
-        <div id="ownStaff"></div>
+        <div id="ownStaff"></div> 
+        <div class="field-label">📿 دۇئا لىنتىسى</div><textarea class="field-input" id="ownDuas" rows="6" placeholder="ھەر قۇرغا بىر دۇئا"></textarea><div class="field-label">لىنتا سۈرئىتى (كىچىك سان = ئاستا)</div><input class="field-input" id="ownDuaSpeed" type="number" min="8" max="200"><button class="btn btn-primary" onclick="saveOwnerDuas()">دۇئا لىنتىسىنى ساقلاش</button>
+        <div class="field-label">🧪 تەكشۈرۈش تۈرلىرى</div><button class="btn btn-outline" onclick="openTestCatalog()">تەكشۈرۈش تۈرلىرىنى باشقۇرۇش</button>
         <div class="field-label">ئىش ئورنى (ۋەزىپە بويىچە، بېشىدا كۆرۈنىدۇ ۋە ئاۋازلىق چاقىرىقتا ئوقۇلىدۇ)</div>
         <select class="field-select" id="ownDeptRole" onchange="renderOwnDept()"></select>
         <input class="field-input" id="ownDept" placeholder="مەسىلەن: ئامبۇلاتورىيە">
@@ -1555,6 +1569,7 @@ function afterIdentityReady(){
   listenTestOrdersShared();
   listenSalesShared();
   listenAppConfig();
+  loadBrand();
   listenBranding();
   listenMyProfile();
   listenAllStaff();
@@ -1854,17 +1869,19 @@ function changeRate(code, val){
   updateSaleCurrencyAmount();
   renderDashboardLists();
 }
+function canAdmin(){ return isOwner() || (myProfile && myProfile.role==='باشقۇرغۇچى'); }
+function canManagePaymentQR(){ return canAdmin(); }
+function refreshAdminUI(){
+  const admin=canAdmin(), q=document.getElementById('paymentQRSection'), panel=document.getElementById('ownerPanel');
+  if(q) q.style.display=admin?'':'none';
+  if(panel) panel.style.display=admin?'block':'none';
+  if(admin){ renderOwnerDuaForm(); }
+}
 function uploadQr(ev){
-  const file = ev.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e=>{
-    state.paymentQR = e.target.result;
-    const img=document.getElementById('qrPreview');
-    img.src=state.paymentQR; img.style.display='block';
-    saveSettingsToLocal();
-    toast('شام كاش پاركودى يېڭىلاندى');
-  };
-  reader.readAsDataURL(file);
+  if(!canManagePaymentQR()){toast('شام كاش پار كودىنى پەقەت باش دوختۇر ياكى باشقۇرغۇچى ئۆزگەرتەلەيدۇ');if(ev&&ev.target)ev.target.value='';return;}
+  const f=ev&&ev.target&&ev.target.files&&ev.target.files[0];if(!f)return;
+  if(!f.type.startsWith('image/')){toast('پەقەت رەسىم تاللاڭ');return;}
+  const r=new FileReader();r.onload=e=>{state.paymentQR=e.target.result;const im=document.getElementById('qrPreview');if(im){im.src=state.paymentQR;im.style.display='block';}saveSettingsToLocal();saveSettingsToFirestore();toast('شام كاش پار كودى ساقلاندى ✓');};r.readAsDataURL(f);
 }
 function changePin(){
   const oldV = document.getElementById('setPinOld').value;
@@ -4509,6 +4526,33 @@ function viewTestResult(orderId, idx){
   `;
   openModal('modalTestResult');
 }
+
+/* ===== COMPLETE PERSONAL ACCOUNT / OWNER / GESTURE EXTENSIONS ===== */
+const DUA_DEFAULT=['السَّلَامُ عَلَيْكُمْ وَرَحْمَةُ اللَّهِ وَبَرَكَاتُهُ','أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ','رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً'];
+let brandConfig={}, gesturePref={drawer:true,tabs:false}, accDays=[];
+const ACC_DAYS=['دۈشەنبە','سەيشەنبە','چارشەنبە','پەيشەنبە','جۈمە','شەنبە','يەكشەنبە'];
+function profileRef(){return myProfile&&myProfile.idcode?staffRef(myProfile.idcode):null;}
+function escX(x){return String(x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function openMyAccount(){if(!myProfile||!myProfile.idcode){toast('ئاۋال ID بىلەن كىرىڭ');return;}const c=myProfile.contact||{};document.getElementById('accountIdentity').textContent=(myProfile.name||'—')+' • '+myProfile.idcode;document.getElementById('accAddress').value=c.address||'';document.getElementById('accWhatsApp').value=c.whatsapp||'';document.getElementById('accTelegram').value=c.telegram||'';document.getElementById('accEmail').value=c.email||'';document.getElementById('accStart').value=c.start||'';document.getElementById('accEnd').value=c.end||'';accDays=Array.isArray(c.days)?c.days:[];drawAccDays();openModal('modalMyAccount');renderAllAccounts();}
+function drawAccDays(){document.getElementById('accDays').innerHTML=ACC_DAYS.map(d=>'<button class="chip '+(accDays.includes(d)?'active':'')+'" onclick="toggleAccDay(\''+d+'\')">'+d+'</button>').join('');}
+function toggleAccDay(d){accDays=accDays.includes(d)?accDays.filter(x=>x!==d):accDays.concat(d);drawAccDays();}
+function saveMyAccount(){const r=profileRef();if(!r)return;const c={address:document.getElementById('accAddress').value.trim(),whatsapp:document.getElementById('accWhatsApp').value.trim(),telegram:document.getElementById('accTelegram').value.trim(),email:document.getElementById('accEmail').value.trim(),days:accDays,start:document.getElementById('accStart').value,end:document.getElementById('accEnd').value};r.set({contact:c},{merge:true}).then(()=>{myProfile.contact=c;toast('ھېسابات ئۇچۇرى ساقلاندى ✓');}).catch(dbError);}
+async function renderAllAccounts(){const b=document.getElementById('allAccounts');if(!canAdmin()){b.style.display='none';return;}b.style.display='block';b.innerHTML='<div class="field-label">👑 خىزمەتچىلەرنىڭ ئالاقە ئۇچۇرى</div>';try{const s=await db.collection('shops').doc(SHOP_ID).collection('staffProfiles').get();s.forEach(d=>{const x=d.data(),c=x.contact||{};b.innerHTML+='<div class="list-row"><div><b>'+escX(x.name||x.idcode)+'</b><div class="row-sub">📍 '+escX(c.address||'—')+'</div><div class="row-sub">WhatsApp: '+escX(c.whatsapp||'—')+' · Telegram: '+escX(c.telegram||'—')+'</div><div class="row-sub">✉ '+escX(c.email||'—')+' · '+escX((c.days||[]).join('، '))+' '+escX((c.start||'')+'–'+(c.end||''))+'</div></div></div>';});}catch(e){b.innerHTML+='<div class="row-sub">ئوقۇغىلى بولمىدى</div>';}}
+function openOwnerLogin(){toggleDrawer(false);openModal('modalIdentity');}
+function openMyPassword(){if(!myProfile||!myProfile.idcode){toast('ئاۋال ID بىلەن كىرىڭ');return;}document.getElementById('passTitle').textContent=isOwner()?'👑 باش دوختۇر پارولى':'🔐 ھېسابات پارولىم';['passOld','passNew','passNew2'].forEach(x=>document.getElementById(x).value='');openModal('modalMyPassword');}
+function passHash(id,p){return sha256('gazi|'+id+'|'+p);}
+async function saveMyPassword(){const o=document.getElementById('passOld').value,n=document.getElementById('passNew').value,n2=document.getElementById('passNew2').value;if(n.length<4||n!==n2){toast(n.length<4?'پارول كەم دېگەندە 4 خانە بولسۇن':'پاروللار ئوخشىمىدى');return;}try{if(isOwner()){const r=db.collection('shops').doc(SHOP_ID).collection('config').doc('owner');await db.runTransaction(tx=>tx.get(r).then(d=>{if(!d.exists||d.data().hash!==sha256('gazi|'+o))throw {message:'كونا پارول خاتا'};tx.set(r,{hash:sha256('gazi|'+n)},{merge:true});}));}else{const r=profileRef();await db.runTransaction(tx=>tx.get(r).then(d=>{const cur=d.exists?d.data().pwHash:null;if(cur&&cur!==passHash(myProfile.idcode,o))throw {message:'كونا پارول خاتا'};tx.set(r,{pwHash:passHash(myProfile.idcode,n)},{merge:true});}));}closeModal('modalMyPassword');toast('پارول ساقلاندى ✓');}catch(e){toast(e.message||'خاتالىق');}}
+function brandRef(){return db.collection('shops').doc(SHOP_ID).collection('config').doc('branding');}
+function loadBrand(){if(!db)return;brandRef().onSnapshot(d=>{brandConfig=d.exists?d.data()||{}:{};renderBrandStrip();renderOwnerDuaForm();},()=>{});}
+function renderBrandStrip(){const s=document.getElementById('duaStrip');if(!s)return;const a=Array.isArray(brandConfig.duas)&&brandConfig.duas.length?brandConfig.duas:DUA_DEFAULT;const h=a.map(x=>'<span class="dua-item">'+escX(x)+'</span><span class="dua-sep">✦</span>').join('');s.innerHTML='<div class="dua-track"><span class="dua-half">'+h+'</span><span class="dua-half">'+h+'</span></div>';}
+function renderOwnerDuaForm(){if(!canAdmin())return;const a=document.getElementById('ownDuas'),s=document.getElementById('ownDuaSpeed');if(a&&document.activeElement!==a)a.value=(Array.isArray(brandConfig.duas)&&brandConfig.duas.length?brandConfig.duas:DUA_DEFAULT).join('\n');if(s&&document.activeElement!==s)s.value=brandConfig.speed||38;}
+function saveOwnerDuas(){if(!canAdmin()){toast('رۇخسەت يوق');return;}const a=document.getElementById('ownDuas').value.split('\n').map(x=>x.trim()).filter(Boolean),speed=Math.max(8,Math.min(200,+document.getElementById('ownDuaSpeed').value||38));brandRef().set({duas:a,speed},{merge:true}).then(()=>toast('دۇئا لىنتىسى ساقلاندى ✓')).catch(dbError);}
+function gkey(){return 'gazi_gesture_'+((myProfile&&myProfile.idcode)||'anon');}
+function loadGesture(){try{gesturePref=Object.assign({drawer:true,tabs:false},JSON.parse(localStorage.getItem(gkey())||'{}'));}catch(e){}const d=document.getElementById('gestureDrawer'),x=document.getElementById('gestureTabs');if(d)d.checked=gesturePref.drawer!==false;if(x)x.checked=!!gesturePref.tabs;}
+function setGesturePref(k,v){gesturePref[k]=!!v;localStorage.setItem(gkey(),JSON.stringify(gesturePref));toast('سىيرىش تەڭشىكى ساقلاندى ✓');}
+(function(){let x=0,y=0,edge=false;document.addEventListener('touchstart',e=>{if(!e.touches||e.touches.length!==1)return;const p=e.touches[0];x=p.clientX;y=p.clientY;const d=document.getElementById('drawer');edge=(d&&d.classList.contains('open'))||x>=window.innerWidth-48;},{passive:true});document.addEventListener('touchend',e=>{if(!e.changedTouches||!e.changedTouches[0])return;const p=e.changedTouches[0],dx=p.clientX-x,dy=p.clientY-y;if(Math.abs(dx)<55||Math.abs(dy)>Math.abs(dx)*.65)return;const d=document.getElementById('drawer');if(gesturePref.drawer!==false&&edge&&d){if(d.classList.contains('open')){if(dx>0)toggleDrawer(false);}else if(dx<0)toggleDrawer(true);return;}if(gesturePref.tabs&&Math.abs(dx)>90){const a=['dash','pos','inv','rx','tests','queue','expenses','suppliers','restock','staff','rep'];let i=a.indexOf(currentTabName);if(i>=0)switchTab(a[dx<0?Math.min(i+1,a.length-1):Math.max(i-1,0)]);}}, {passive:true});})();
+(function(){const f=window.openModal;if(typeof f==='function')window.openModal=function(id){const r=f.apply(this,arguments);if(id==='modalSettings')setTimeout(()=>{loadGesture();refreshAdminUI();},0);return r;};})();
+(function(){const f=window.updateRoleUI;if(typeof f==='function')window.updateRoleUI=function(){const r=f.apply(this,arguments);setTimeout(refreshAdminUI,10);return r;};})();
 </script>
 </body>
 </html>
