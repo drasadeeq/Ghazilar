@@ -23,8 +23,17 @@ jobs:
       - name: Prepare web files
         run: |
           mkdir -p www
-          for f in index.html sw.js manifest.json firebase-messaging-sw.js icon-192.png icon-512.png; do
-            if [ -f "$f" ]; then cp "$f" www/; fi
+          SRC=$(find . -name index.html -not -path "./node_modules/*" -not -path "./android/*" -not -path "./www/*" | head -n 1)
+          echo "index.html found at: $SRC"
+          if [ -z "$SRC" ]; then
+            echo "ERROR: index.html not found in the repository. Files:"
+            ls -R | head -50
+            exit 1
+          fi
+          DIR=$(dirname "$SRC")
+          cp "$DIR/index.html" www/
+          for f in sw.js manifest.json firebase-messaging-sw.js icon-192.png icon-512.png; do
+            if [ -f "$DIR/$f" ]; then cp "$DIR/$f" www/; fi
           done
           ls -la www
 
