@@ -1,1 +1,153 @@
-1name: Build APK23on:4  push:5    branches: [main]6  workflow_dispatch:78permissions:9  contents: write1011jobs:12  build:13    runs-on: ubuntu-24.0414    steps:15      - uses: actions/checkout@v41617      - uses: actions/setup-node@v418        with:19          node-version: 202021      - uses: actions/setup-java@v422        with:23          distribution: temurin24          java-version: 172526      - name: Signing key (existing key is reused, so updates install over the old app)27        run: |28          if [ -f app-release.keystore ]; then29            echo "MODE=release" >> "$GITHUB_ENV"30            echo "Using existing app-release.keystore"31          else32            echo "MODE=debug" >> "$GITHUB_ENV"33            mkdir -p ~/.android34            if [ ! -f debug.keystore ]; then35              keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"36              git config user.name "github-actions"37              git config user.email "actions@github.com"38              git add debug.keystore39              git commit -m "Add fixed signing key"40              git push41            fi42            cp debug.keystore ~/.android/debug.keystore
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Signing key (existing key is reused, so updates install over the old app)
+        run: |
+          if [ -f app-release.keystore ]; then
+            echo "MODE=release" >> "$GITHUB_ENV"
+            echo "Using existing app-release.keystore"
+          else
+            echo "MODE=debug" >> "$GITHUB_ENV"
+            mkdir -p ~/.android
+            if [ ! -f debug.keystore ]; then
+              keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+              git config user.name "github-actions"
+              git config user.email "actions@github.com"
+              git add debug.keystore
+              git commit -m "Add fixed signing key"
+              git push
+            fi
+            cp debug.keystore ~/.android/debug.keystore
+            echo "Using debug.keystore"
+          fi
+
+      - name: Prepare web files
+        run: |
+          mkdir -p www
+          for f in index.html firebase-messaging-sw.js manifest.json icon-192.png icon-512.png; do
+            if [ -f "$f" ]; then cp "$f" www/; fi
+          done
+          ls -la www
+
+      - name: Bundle web libraries inside the app (camera/barcode works without CDN)
+        run: |
+          python3 - <<'PY'
+          import os, re, urllib.request
+          path = 'www/index.html'
+          html = open(path, encoding='utf8').read()
+          os.makedirs('www/libs', exist_ok=True)
+          urls = sorted(set(re.findall(r'<script src="(https://[^"]+\.js)"', html)))
+          for u in urls:
+              name = u.rstrip('/').split('/')[-1]
+              try:
+                  req = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0'})
+                  data = urllib.request.urlopen(req, timeout=90).read()
+                  if len(data) < 2000:
+                      raise RuntimeError('file too small')
+                  open('www/libs/' + name, 'wb').write(data)
+                  html = html.replace(u, 'libs/' + name)
+                  print('bundled', name, len(data))
+              except Exception as e:
+                  print('SKIP (stays online):', u, e)
+          open(path, 'w', encoding='utf8').write(html)
+          PY
+
+      - name: Create Android project
+        run: |
+          npm init -y
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/app@6
+          npx cap init Ghazilar com.ghazilar.app --web-dir=www
+          npx cap add android
+          MF=android/app/src/main/AndroidManifest.xml
+          sed -i 's#</manifest>#<uses-permission android:name="android.permission.CAMERA"/><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/><uses-feature android:name="android.hardware.camera" android:required="false"/></manifest>#' "$MF"
+          npx cap sync android
+
+      - name: Set app version (increases on every build)
+        run: |
+          sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
+          grep -n "versionCode\|versionName" android/app/build.gradle
+
+      - name: App icon (new Ghazilar Saghlamliqi logo)
+        run: |
+          python3 -m pip install --quiet --break-system-packages pillow
+          python3 - <<'PY'
+          import os, shutil
+          from PIL import Image, ImageDraw
+          src = 'icon-512.png'
+          im = Image.open(src).convert('RGBA')
+          res = 'android/app/src/main/res'
+          sizes = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
+          for d, s in sizes.items():
+              os.makedirs(f'{res}/mipmap-{d}', exist_ok=True)
+              a = im.resize((s, s), Image.LANCZOS)
+              a.save(f'{res}/mipmap-{d}/ic_launcher.png')
+              a.save(f'{res}/mipmap-{d}/ic_launcher_foreground.png')
+              m = Image.new('L', (s * 4, s * 4), 0)
+              ImageDraw.Draw(m).ellipse([0, 0, s * 4 - 1, s * 4 - 1], fill=255)
+              m = m.resize((s, s), Image.LANCZOS)
+              r = a.copy()
+              r.putalpha(m)
+              r.save(f'{res}/mipmap-{d}/ic_launcher_round.png')
+          shutil.rmtree(f'{res}/mipmap-anydpi-v26', ignore_errors=True)
+          print('icons written from', src)
+          PY
+
+      - name: Build release APK (existing app-release.keystore)
+        if: env.MODE == 'release'
+        working-directory: android
+        run: |
+          cat >> app/build.gradle <<'EOF'
+          android {
+            signingConfigs {
+              release {
+                storeFile file('../../app-release.keystore')
+                storePassword 'change-this-password'
+                keyAlias 'ghazilar'
+                keyPassword 'change-this-password'
+              }
+            }
+            buildTypes {
+              release {
+                signingConfig signingConfigs.release
+                minifyEnabled false
+              }
+            }
+          }
+          EOF
+          ./gradlew assembleRelease
+
+      - name: Build debug APK (fixed debug.keystore)
+        if: env.MODE == 'debug'
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghazilar-apk
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
