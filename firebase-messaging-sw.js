@@ -13,17 +13,33 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// FCM `notification` yüklemesi ئۆزى ئاپتوماتىك كۆرسىتىلىدۇ؛ پەقەت data-only ئۇچۇرلار ئۈچۈن:
+const CACHE = 'gazilar-v30';
+const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+
+self.addEventListener('install', function (event) {
+  event.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(CORE).catch(function () {}); }).then(function () { return self.skipWaiting(); }));
+});
+self.addEventListener('activate', function (event) {
+  event.waitUntil(caches.keys().then(function (keys) {
+    return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+  }).then(function () { return self.clients.claim(); }));
+});
+self.addEventListener('fetch', function (event) {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+  event.respondWith(fetch(req).then(function (res) {
+    const copy = res.clone();
+    caches.open(CACHE).then(function (c) { c.put(req, copy); }).catch(function () {});
+    return res;
+  }).catch(function () { return caches.match(req).then(function (m) { return m || caches.match('./index.html'); }); }));
+});
 messaging.onBackgroundMessage(function (payload) {
   if (payload.notification) return;
   const d = payload.data || {};
-  self.registration.showNotification(d.title || 'غازىلار ساقلىق مەركىزى', {
-    body: d.speak || d.body || '',
-    vibrate: [200, 100, 200],
-    tag: 'gazi-' + Date.now()
-  });
+  self.registration.showNotification(d.title || 'غازىلار ساقلىق مەركىزى', { body: d.speak || d.body || '', vibrate: [200, 100, 200], tag: 'gazi-' + Date.now() });
 });
-
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
